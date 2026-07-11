@@ -27,81 +27,189 @@ function shareUrl(inviteCode: string): string {
   return `${SITE}/?ref=${encodeURIComponent(inviteCode)}`;
 }
 
-function welcomeHtml(position: number, inviteCode: string): string {
-  const url = shareUrl(inviteCode);
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function emailShell(preheader: string, bodyRows: string): string {
   return `<!DOCTYPE html>
-<html>
-<body style="margin:0;padding:0;background:#0D111F;font-family:Georgia,'Times New Roman',serif;color:#EAE2CF;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#0D111F;padding:40px 16px;">
-    <tr><td align="center">
-      <table role="presentation" width="100%" style="max-width:520px;background:#151B2E;border:1px solid #2A3348;border-radius:12px;padding:32px;">
-        <tr><td>
-          <p style="margin:0 0 8px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#8B93A7;">Owl Post · Waitlist</p>
-          <h1 style="margin:0 0 16px;font-size:28px;line-height:1.2;color:#F4EBD8;">You're on the perch.</h1>
-          <p style="margin:0 0 20px;font-size:16px;line-height:1.55;color:#C9C0A8;">
-            Welcome to Owlry. Your seat is reserved as
-            <strong style="color:#F4EBD8;">reader nº ${position}</strong>
-            of ${WAITLIST_CAP} founding readers.
-          </p>
-          <p style="margin:0 0 12px;font-size:16px;line-height:1.55;color:#C9C0A8;">
-            Your personal invite code (for beta later):
-          </p>
-          <p style="margin:0 0 20px;font-size:22px;letter-spacing:.14em;font-family:'Courier New',monospace;color:#F4EBD8;">
-            ${inviteCode}
-          </p>
-          <p style="margin:0 0 12px;font-size:16px;line-height:1.55;color:#C9C0A8;">
-            Share this link — each friend who joins moves you <strong style="color:#F4EBD8;">up one seat</strong>:
-          </p>
-          <p style="margin:0 0 20px;font-size:14px;line-height:1.5;word-break:break-all;">
-            <a href="${url}" style="color:#E8A87C;">${url}</a>
-          </p>
-          <p style="margin:0;font-size:14px;line-height:1.5;color:#8B93A7;">
-            — the owls at <a href="${SITE}" style="color:#E8A87C;">owlry.ai</a>
-          </p>
-        </td></tr>
-      </table>
-    </td></tr>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>Owlry</title>
+<!--[if mso]><style>body,table,td{font-family:Georgia,serif!important}</style><![endif]-->
+</head>
+<body style="margin:0;padding:0;background:#E9DCBB;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
+  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#E9DCBB;opacity:0;">
+    ${escapeHtml(preheader)}&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;
+  </div>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#E9DCBB;">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:560px;margin:0 auto;">
+          <tr>
+            <td align="center" style="padding:0 0 20px;font-family:Georgia,'Times New Roman',serif;font-size:13px;letter-spacing:.22em;text-transform:uppercase;color:#A8730A;">
+              Owlry
+            </td>
+          </tr>
+          <tr>
+            <td style="background:#FBF4E1;border:1px solid rgba(34,26,14,.16);border-radius:4px;box-shadow:0 12px 28px -18px rgba(64,44,10,.45);">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td style="height:6px;background:#FFC017;font-size:0;line-height:0;">&nbsp;</td>
+                </tr>
+                <tr>
+                  <td style="padding:36px 36px 40px;font-family:Georgia,'Times New Roman',serif;color:#241B0E;">
+                    ${bodyRows}
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:24px 8px 0;font-family:Georgia,'Times New Roman',serif;font-size:13px;line-height:1.5;color:#6F6452;">
+              Sent by the owls at
+              <a href="${SITE}" style="color:#A8730A;text-decoration:underline;">owlry.ai</a>
+              · Reply anytime
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
   </table>
 </body>
 </html>`;
+}
+
+function welcomeHtml(position: number, inviteCode: string): string {
+  const url = shareUrl(inviteCode);
+  const code = escapeHtml(inviteCode);
+  const body = `
+    <p style="margin:0 0 8px;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#A8730A;">
+      Owl Post · Waitlist
+    </p>
+    <h1 style="margin:0 0 18px;font-size:32px;line-height:1.2;font-weight:normal;color:#221A0E;">
+      You're on the perch.
+    </h1>
+    <p style="margin:0 0 22px;font-size:17px;line-height:1.65;color:#3A3124;">
+      Welcome to Owlry — the reading perch for people who want books that actually stick.
+      Your place among the founding readers is sealed.
+    </p>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 28px;">
+      <tr>
+        <td align="center" style="background:#F4E6C4;border:1px solid rgba(34,26,14,.14);border-radius:4px;padding:22px 20px;">
+          <p style="margin:0 0 6px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#6F6452;">
+            Your seat
+          </p>
+          <p style="margin:0;font-size:40px;line-height:1.1;color:#221A0E;">
+            nº&nbsp;${position}
+          </p>
+          <p style="margin:8px 0 0;font-size:14px;line-height:1.4;color:#6F6452;">
+            of ${WAITLIST_CAP} founding readers
+          </p>
+        </td>
+      </tr>
+    </table>
+    <p style="margin:0 0 10px;font-size:15px;line-height:1.55;color:#3A3124;">
+      Your personal code <span style="color:#6F6452;">(for beta later)</span>
+    </p>
+    <p style="margin:0 0 28px;font-size:22px;letter-spacing:.18em;font-family:'Courier New',Courier,monospace;color:#221A0E;">
+      ${code}
+    </p>
+    <p style="margin:0 0 8px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#A8730A;">
+      Move up the line
+    </p>
+    <p style="margin:0 0 20px;font-size:16px;line-height:1.6;color:#3A3124;">
+      Share your invite link. Each friend who joins the waitlist moves you
+      <strong style="color:#221A0E;">up one seat</strong>.
+    </p>
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 16px;">
+      <tr>
+        <td align="center" style="border-radius:4px;background:#221A0E;">
+          <a href="${url}" style="display:inline-block;padding:14px 28px;font-family:Georgia,'Times New Roman',serif;font-size:16px;line-height:1.2;color:#FBF4E1;text-decoration:none;">
+            Copy &amp; share your link
+          </a>
+        </td>
+      </tr>
+    </table>
+    <p style="margin:0 0 28px;font-size:13px;line-height:1.5;word-break:break-all;">
+      <a href="${url}" style="color:#A8730A;text-decoration:underline;">${escapeHtml(url)}</a>
+    </p>
+    <p style="margin:0;font-size:15px;line-height:1.6;color:#6F6452;">
+      We'll write when beta opens for your place. Until then — keep reading.
+    </p>
+  `;
+  return emailShell(
+    `You're reader nº ${position}. Share your link to climb the waitlist.`,
+    body,
+  );
 }
 
 function welcomeText(position: number, inviteCode: string): string {
   const url = shareUrl(inviteCode);
   return `You're on the perch.
 
-Welcome to Owlry. Your seat is reserved as reader nº ${position} of ${WAITLIST_CAP} founding readers.
+Welcome to Owlry — the reading perch for people who want books that actually stick.
+Your place among the founding readers is sealed.
 
-Your personal invite code: ${inviteCode}
+Your seat: reader nº ${position} of ${WAITLIST_CAP}
 
-Share this link — each friend who joins moves you up one seat:
+Personal invite code (for beta later): ${inviteCode}
+
+Move up the line
+Share your invite link. Each friend who joins moves you up one seat:
 ${url}
+
+We'll write when beta opens for your place. Until then — keep reading.
 
 — the owls at owlry.ai`;
 }
 
-function boostHtml(newSeat: number): string {
-  return `<!DOCTYPE html>
-<html>
-<body style="margin:0;padding:0;background:#0D111F;font-family:Georgia,'Times New Roman',serif;color:#EAE2CF;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#0D111F;padding:40px 16px;">
-    <tr><td align="center">
-      <table role="presentation" width="100%" style="max-width:520px;background:#151B2E;border:1px solid #2A3348;border-radius:12px;padding:32px;">
-        <tr><td>
-          <p style="margin:0 0 8px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#8B93A7;">Owl Post · Referral</p>
-          <h1 style="margin:0 0 16px;font-size:28px;line-height:1.2;color:#F4EBD8;">A friend joined the perch.</h1>
-          <p style="margin:0 0 20px;font-size:16px;line-height:1.55;color:#C9C0A8;">
-            You're now <strong style="color:#F4EBD8;">reader nº ${newSeat}</strong>. Keep sharing your link to climb higher.
+function boostHtml(newSeat: number, shareLink?: string): string {
+  const url = shareLink || SITE;
+  const body = `
+    <p style="margin:0 0 8px;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#A8730A;">
+      Owl Post · Referral
+    </p>
+    <h1 style="margin:0 0 18px;font-size:32px;line-height:1.2;font-weight:normal;color:#221A0E;">
+      A friend joined the perch.
+    </h1>
+    <p style="margin:0 0 22px;font-size:17px;line-height:1.65;color:#3A3124;">
+      Someone used your invite. Your seat just improved.
+    </p>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 28px;">
+      <tr>
+        <td align="center" style="background:#F4E6C4;border:1px solid rgba(34,26,14,.14);border-radius:4px;padding:22px 20px;">
+          <p style="margin:0 0 6px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#6F6452;">
+            You're now
           </p>
-          <p style="margin:0;font-size:14px;line-height:1.5;color:#8B93A7;">
-            — the owls at <a href="${SITE}" style="color:#E8A87C;">owlry.ai</a>
+          <p style="margin:0;font-size:40px;line-height:1.1;color:#221A0E;">
+            reader nº&nbsp;${newSeat}
           </p>
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
+        </td>
+      </tr>
+    </table>
+    <p style="margin:0 0 20px;font-size:16px;line-height:1.6;color:#3A3124;">
+      Keep sharing — every new friend moves you one seat closer to the front.
+    </p>
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+      <tr>
+        <td align="center" style="border-radius:4px;background:#221A0E;">
+          <a href="${url}" style="display:inline-block;padding:14px 28px;font-family:Georgia,'Times New Roman',serif;font-size:16px;line-height:1.2;color:#FBF4E1;text-decoration:none;">
+            Share your invite again
+          </a>
+        </td>
+      </tr>
+    </table>
+  `;
+  return emailShell(`A friend joined — you're now reader nº ${newSeat}.`, body);
 }
 
 Deno.serve(async (req: Request) => {
@@ -183,11 +291,21 @@ Deno.serve(async (req: Request) => {
 
     if (result.referrer_boosted && result.referrer_email && result.referrer_new_seat) {
       const newSeat = Number(result.referrer_new_seat);
+      const referrerShare = referralCode ? shareUrl(referralCode) : SITE;
       await sendMail(
         String(result.referrer_email),
         `A friend joined — you're now reader nº ${newSeat}`,
-        boostHtml(newSeat),
-        `A friend joined the perch.\n\nYou're now reader nº ${newSeat}. Keep sharing your link to climb higher.\n\n— the owls at owlry.ai`,
+        boostHtml(newSeat, referrerShare),
+        `A friend joined the perch.
+
+Someone used your invite. Your seat just improved.
+
+You're now reader nº ${newSeat}.
+
+Keep sharing — every new friend moves you one seat closer to the front:
+${referrerShare}
+
+— the owls at owlry.ai`,
         'waitlist_referral_boost',
         serviceKey,
         supabaseUrl,
