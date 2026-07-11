@@ -21,12 +21,18 @@ Dashboard → **Project Settings** → **Edge Functions** → **Secrets**, add:
 | Name | Value |
 |------|--------|
 | `RESEND_API_KEY` | your `re_...` key |
-| `WAITLIST_FROM_EMAIL` | `Owlry <hello@owlry.ai>` (after domain verified) |
+| `WAITLIST_FROM_EMAIL` | `Owlry <support@owlry.ai>` |
+| `WAITLIST_REPLY_TO` | `polar@owlry.ai` (replies land in your inbox) |
+
+You do **not** need a paid `support@` mailbox for sending. Resend sends as `support@` on your verified domain; `reply_to` routes replies to `polar@`.
+
+**Optional (recommended):** In GoDaddy, forward `support@owlry.ai` → `polar@owlry.ai` so *any* mail to support@ (not just Resend replies) reaches you:
+https://email.godaddy.com/ or Domain → Email → Forwarding
 
 Or CLI (from any machine with Supabase linked):
 
 ```bash
-supabase secrets set RESEND_API_KEY=re_xxxx WAITLIST_FROM_EMAIL="Owlry <hello@owlry.ai>" --project-ref twxzbpfchoctxyjeivvr
+supabase secrets set RESEND_API_KEY=re_xxxx WAITLIST_FROM_EMAIL="Owlry <support@owlry.ai>" WAITLIST_REPLY_TO=polar@owlry.ai --project-ref twxzbpfchoctxyjeivvr
 ```
 
 `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are already injected automatically.

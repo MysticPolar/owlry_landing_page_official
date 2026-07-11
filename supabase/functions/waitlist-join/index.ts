@@ -1,5 +1,6 @@
 // Owlry waitlist join + welcome email (Resend)
 // Deployed with verify_jwt=false so the public landing can call it with the anon key.
+// From: support@owlry.ai · Replies: polar@owlry.ai (WAITLIST_REPLY_TO)
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -21,7 +22,7 @@ function isEmail(v: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 }
 
-function welcomeHtml(position: number): string {
+function welcomeHtml(position: number, inviteCode: string): string {
   return `<!DOCTYPE html>
 <html>
 <body style="margin:0;padding:0;background:#0D111F;font-family:Georgia,'Times New Roman',serif;color:#EAE2CF;">
@@ -36,8 +37,14 @@ function welcomeHtml(position: number): string {
             <strong style="color:#F4EBD8;">reader nº ${position}</strong>
             of ${WAITLIST_CAP} founding readers.
           </p>
+          <p style="margin:0 0 12px;font-size:16px;line-height:1.55;color:#C9C0A8;">
+            Your personal invite code:
+          </p>
+          <p style="margin:0 0 20px;font-size:22px;letter-spacing:.14em;font-family:'Courier New',monospace;color:#F4EBD8;">
+            ${inviteCode}
+          </p>
           <p style="margin:0 0 20px;font-size:16px;line-height:1.55;color:#C9C0A8;">
-            We're only boarding ${WAITLIST_CAP} readers for now. The moment beta opens for your place in line, we'll write you immediately — no spam, just the letter that matters.
+            Keep it safe — you'll need it when beta opens. We'll write you the moment your place in line is ready.
           </p>
           <p style="margin:0;font-size:14px;line-height:1.5;color:#8B93A7;">
             — the owls at <a href="https://owlry.ai" style="color:#E8A87C;">owlry.ai</a>
@@ -50,12 +57,14 @@ function welcomeHtml(position: number): string {
 </html>`;
 }
 
-function welcomeText(position: number): string {
+function welcomeText(position: number, inviteCode: string): string {
   return `You're on the perch.
 
 Welcome to Owlry. Your seat is reserved as reader nº ${position} of ${WAITLIST_CAP} founding readers.
 
-We're only boarding ${WAITLIST_CAP} readers for now. The moment beta opens for your place in line, we'll write you immediately.
+Your personal invite code: ${inviteCode}
+
+Keep it safe — you'll need it when beta opens. We'll write you the moment your place in line is ready.
 
 — the owls at owlry.ai`;
 }
@@ -112,8 +121,10 @@ Deno.serve(async (req: Request) => {
     }
 
     let emailSent = false;
-    if (!result.already && result.position) {
-      emailSent = await sendWelcome(email, Number(result.position), serviceKey, supabaseUrl);
+    const seat = Number(result.seat_number ?? result.position);
+    const inviteCode = String(result.invite_code ?? '');
+    if (!result.already && seat && inviteCode) {
+      emailSent = await sendWelcome(email, seat, inviteCode, serviceKey, supabaseUrl);
     }
 
     return json({
@@ -121,7 +132,9 @@ Deno.serve(async (req: Request) => {
       full: false,
       cap: WAITLIST_CAP,
       already: !!result.already,
-      position: result.position,
+      position: seat,
+      seat_number: seat,
+      invite_code: inviteCode || null,
       emailSent,
     });
   } catch (err) {
@@ -133,13 +146,17 @@ Deno.serve(async (req: Request) => {
 async function sendWelcome(
   email: string,
   position: number,
+  inviteCode: string,
   serviceKey: string,
   supabaseUrl: string,
 ): Promise<boolean> {
   const resendKey = Deno.env.get('RESEND_API_KEY');
   const from =
     Deno.env.get('WAITLIST_FROM_EMAIL') ||
-    'Owlry <hello@owlry.ai>';
+    'Owlry <support@owlry.ai>';
+  const replyTo =
+    Deno.env.get('WAITLIST_REPLY_TO') ||
+    'polar@owlry.ai';
 
   if (!resendKey) {
     console.warn('RESEND_API_KEY missing — welcome email skipped');
@@ -174,10 +191,11 @@ async function sendWelcome(
     },
     body: JSON.stringify({
       from,
+      reply_to: replyTo,
       to: [email],
       subject: `You're reader nº ${position} — Owlry waitlist`,
-      html: welcomeHtml(position),
-      text: welcomeText(position),
+      html: welcomeHtml(position, inviteCode),
+      text: welcomeText(position, inviteCode),
     }),
   });
 
