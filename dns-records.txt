@@ -1,0 +1,22 @@
+# DNS records for owlry.ai → GitHub Pages
+# Apply these in GoDaddy DNS for owlry.ai, then re-enable custom domains.
+
+# 1) Delete any existing A / AAAA / forwarding / parking records for @ (apex)
+# 2) Delete domain forwarding if enabled (GoDaddy → Forwarding)
+# 3) Add:
+
+# Apex → GitHub Pages
+A     @     185.199.108.153
+A     @     185.199.109.153
+A     @     185.199.110.153
+A     @     185.199.111.153
+
+# www + app → GitHub Pages user site
+CNAME www   mysticpolar.github.io
+CNAME app   mysticpolar.github.io
+
+# Optional IPv6 (AAAA) for apex — GitHub docs:
+# 2606:50c0:8000::153
+# 2606:50c0:8001::153
+# 2606:50c0:8002::153
+# 2606:50c0:8003::153
