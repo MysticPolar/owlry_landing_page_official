@@ -1,6 +1,6 @@
-// Owlry waitlist join + welcome email (Resend)
-// Deployed with verify_jwt=false so the public landing can call it with the anon key.
-// From: support@owlry.ai · Replies: polar@owlry.ai (WAITLIST_REPLY_TO)
+// Owlry waitlist join + welcome email + referral seat boosts
+// Share: https://owlry.ai/?ref={invite_code}
+// From: support@owlry.ai · Replies: polar@owlry.ai
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,6 +10,7 @@ const corsHeaders = {
 };
 
 const WAITLIST_CAP = 2000;
+const SITE = 'https://owlry.ai';
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -22,7 +23,12 @@ function isEmail(v: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 }
 
+function shareUrl(inviteCode: string): string {
+  return `${SITE}/?ref=${encodeURIComponent(inviteCode)}`;
+}
+
 function welcomeHtml(position: number, inviteCode: string): string {
+  const url = shareUrl(inviteCode);
   return `<!DOCTYPE html>
 <html>
 <body style="margin:0;padding:0;background:#0D111F;font-family:Georgia,'Times New Roman',serif;color:#EAE2CF;">
@@ -38,16 +44,19 @@ function welcomeHtml(position: number, inviteCode: string): string {
             of ${WAITLIST_CAP} founding readers.
           </p>
           <p style="margin:0 0 12px;font-size:16px;line-height:1.55;color:#C9C0A8;">
-            Your personal invite code:
+            Your personal invite code (for beta later):
           </p>
           <p style="margin:0 0 20px;font-size:22px;letter-spacing:.14em;font-family:'Courier New',monospace;color:#F4EBD8;">
             ${inviteCode}
           </p>
-          <p style="margin:0 0 20px;font-size:16px;line-height:1.55;color:#C9C0A8;">
-            Keep it safe — you'll need it when beta opens. We'll write you the moment your place in line is ready.
+          <p style="margin:0 0 12px;font-size:16px;line-height:1.55;color:#C9C0A8;">
+            Share this link — each friend who joins moves you <strong style="color:#F4EBD8;">up one seat</strong>:
+          </p>
+          <p style="margin:0 0 20px;font-size:14px;line-height:1.5;word-break:break-all;">
+            <a href="${url}" style="color:#E8A87C;">${url}</a>
           </p>
           <p style="margin:0;font-size:14px;line-height:1.5;color:#8B93A7;">
-            — the owls at <a href="https://owlry.ai" style="color:#E8A87C;">owlry.ai</a>
+            — the owls at <a href="${SITE}" style="color:#E8A87C;">owlry.ai</a>
           </p>
         </td></tr>
       </table>
@@ -58,15 +67,41 @@ function welcomeHtml(position: number, inviteCode: string): string {
 }
 
 function welcomeText(position: number, inviteCode: string): string {
+  const url = shareUrl(inviteCode);
   return `You're on the perch.
 
 Welcome to Owlry. Your seat is reserved as reader nº ${position} of ${WAITLIST_CAP} founding readers.
 
 Your personal invite code: ${inviteCode}
 
-Keep it safe — you'll need it when beta opens. We'll write you the moment your place in line is ready.
+Share this link — each friend who joins moves you up one seat:
+${url}
 
 — the owls at owlry.ai`;
+}
+
+function boostHtml(newSeat: number): string {
+  return `<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;background:#0D111F;font-family:Georgia,'Times New Roman',serif;color:#EAE2CF;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#0D111F;padding:40px 16px;">
+    <tr><td align="center">
+      <table role="presentation" width="100%" style="max-width:520px;background:#151B2E;border:1px solid #2A3348;border-radius:12px;padding:32px;">
+        <tr><td>
+          <p style="margin:0 0 8px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#8B93A7;">Owl Post · Referral</p>
+          <h1 style="margin:0 0 16px;font-size:28px;line-height:1.2;color:#F4EBD8;">A friend joined the perch.</h1>
+          <p style="margin:0 0 20px;font-size:16px;line-height:1.55;color:#C9C0A8;">
+            You're now <strong style="color:#F4EBD8;">reader nº ${newSeat}</strong>. Keep sharing your link to climb higher.
+          </p>
+          <p style="margin:0;font-size:14px;line-height:1.5;color:#8B93A7;">
+            — the owls at <a href="${SITE}" style="color:#E8A87C;">owlry.ai</a>
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
 }
 
 Deno.serve(async (req: Request) => {
@@ -81,6 +116,11 @@ Deno.serve(async (req: Request) => {
     const body = await req.json().catch(() => ({}));
     const email = String(body.email ?? '').trim().toLowerCase();
     const meta = body.meta && typeof body.meta === 'object' ? body.meta : {};
+    const referralCode = String(
+      body.referral_code ?? meta.referral_code ?? meta.ref_code ?? '',
+    )
+      .trim()
+      .toUpperCase();
 
     if (!isEmail(email)) {
       return json({ ok: false, error: 'invalid email' }, 400);
@@ -99,7 +139,11 @@ Deno.serve(async (req: Request) => {
         apikey: serviceKey,
         Authorization: `Bearer ${serviceKey}`,
       },
-      body: JSON.stringify({ p_email: email, p_meta: meta }),
+      body: JSON.stringify({
+        p_email: email,
+        p_meta: meta,
+        p_referral_code: referralCode || null,
+      }),
     });
 
     if (!rpcRes.ok) {
@@ -120,11 +164,34 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    let emailSent = false;
     const seat = Number(result.seat_number ?? result.position);
     const inviteCode = String(result.invite_code ?? '');
+    const share = String(result.share_url ?? (inviteCode ? shareUrl(inviteCode) : ''));
+
+    let emailSent = false;
     if (!result.already && seat && inviteCode) {
-      emailSent = await sendWelcome(email, seat, inviteCode, serviceKey, supabaseUrl);
+      emailSent = await sendMail(
+        email,
+        `You're reader nº ${seat} — Owlry waitlist`,
+        welcomeHtml(seat, inviteCode),
+        welcomeText(seat, inviteCode),
+        'waitlist_welcome',
+        serviceKey,
+        supabaseUrl,
+      );
+    }
+
+    if (result.referrer_boosted && result.referrer_email && result.referrer_new_seat) {
+      const newSeat = Number(result.referrer_new_seat);
+      await sendMail(
+        String(result.referrer_email),
+        `A friend joined — you're now reader nº ${newSeat}`,
+        boostHtml(newSeat),
+        `A friend joined the perch.\n\nYou're now reader nº ${newSeat}. Keep sharing your link to climb higher.\n\n— the owls at owlry.ai`,
+        'waitlist_referral_boost',
+        serviceKey,
+        supabaseUrl,
+      );
     }
 
     return json({
@@ -135,6 +202,9 @@ Deno.serve(async (req: Request) => {
       position: seat,
       seat_number: seat,
       invite_code: inviteCode || null,
+      share_url: share || null,
+      referral_count: result.referral_count ?? 0,
+      referrer_boosted: !!result.referrer_boosted,
       emailSent,
     });
   } catch (err) {
@@ -143,10 +213,12 @@ Deno.serve(async (req: Request) => {
   }
 });
 
-async function sendWelcome(
-  email: string,
-  position: number,
-  inviteCode: string,
+async function sendMail(
+  to: string,
+  subject: string,
+  html: string,
+  text: string,
+  kind: string,
   serviceKey: string,
   supabaseUrl: string,
 ): Promise<boolean> {
@@ -159,7 +231,7 @@ async function sendWelcome(
     'polar@owlry.ai';
 
   if (!resendKey) {
-    console.warn('RESEND_API_KEY missing — welcome email skipped');
+    console.warn('RESEND_API_KEY missing — email skipped', kind);
     return false;
   }
 
@@ -174,10 +246,10 @@ async function sendWelcome(
     },
     body: JSON.stringify({
       id: logId,
-      to_email: email,
-      kind: 'waitlist_welcome',
+      to_email: to,
+      kind,
       language: 'en',
-      subject: `You're reader nº ${position} — Owlry waitlist`,
+      subject,
       status: 'pending',
       attempt_count: 1,
     }),
@@ -189,14 +261,7 @@ async function sendWelcome(
       'Content-Type': 'application/json',
       Authorization: `Bearer ${resendKey}`,
     },
-    body: JSON.stringify({
-      from,
-      reply_to: replyTo,
-      to: [email],
-      subject: `You're reader nº ${position} — Owlry waitlist`,
-      html: welcomeHtml(position, inviteCode),
-      text: welcomeText(position, inviteCode),
-    }),
+    body: JSON.stringify({ from, reply_to: replyTo, to: [to], subject, html, text }),
   });
 
   const data = await res.json().catch(() => ({}));
@@ -218,6 +283,6 @@ async function sendWelcome(
     }),
   }).catch((e) => console.error('email_log update failed', e));
 
-  if (!ok) console.error('Resend error', data);
+  if (!ok) console.error('Resend error', kind, data);
   return ok;
 }

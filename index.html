@@ -957,9 +957,10 @@ footer .wordmark{font-size:24px}
       <span><b id="sealT">sealed.</b><span id="sealS">your first letter is on the owl.</span></span>
     </div>
     <div class="shareline">
-      <span>owls travel faster in pairs —</span>
+      <span>share your perch link — friends move you up —</span>
+      <button class="sharebtn" id="shareInvite" type="button"><svg class="ti" width="1em" height="1em" aria-hidden="true"><use href="#i-mail"></use></svg> copy invite link</button>
       <a class="sharebtn" id="shareX" target="_blank" rel="noopener" href="#"><svg class="ti" width="1em" height="1em" aria-hidden="true"><use href="#i-brand-x"></use></svg> share on x</a>
-      <button class="sharebtn" id="shareCopy" type="button"><svg class="ti" width="1em" height="1em" aria-hidden="true"><use href="#i-mail"></use></svg> copy link</button>
+      <button class="sharebtn" id="shareCopy" type="button"><svg class="ti" width="1em" height="1em" aria-hidden="true"><use href="#i-mail"></use></svg> copy page</button>
     </div>
   </div>
 </section>
@@ -1028,7 +1029,7 @@ async function rpc(fn, body){
   return r.json();
 }
 
-async function joinWaitlist(email, meta){
+async function joinWaitlist(email, meta, referralCode){
   const r = await fetch(OWLRY_WAITLIST.url + '/functions/v1/waitlist-join', {
     method: 'POST',
     headers: {
@@ -1036,12 +1037,15 @@ async function joinWaitlist(email, meta){
       apikey: OWLRY_WAITLIST.anonKey,
       Authorization: 'Bearer ' + OWLRY_WAITLIST.anonKey
     },
-    body: JSON.stringify({ email, meta })
+    body: JSON.stringify({ email, meta, referral_code: referralCode || null })
   });
   const data = await r.json().catch(() => ({}));
   if(!r.ok && !data.full) throw new Error(data.error || ('join ' + r.status));
   return data;
 }
+
+const inviteRef = (new URLSearchParams(location.search).get('ref') || '').trim().toUpperCase();
+let personalShareUrl = 'https://owlry.ai/';
 
 /* live perch count (silent if unconfigured or offline) */
 if(configured){
@@ -1051,18 +1055,22 @@ if(configured){
   }).catch(() => {});
 }
 
-function seal(pos, already, inviteCode){
+function seal(pos, already, inviteCode, shareUrl){
   const t = document.getElementById('sealT'), s = document.getElementById('sealS');
+  personalShareUrl = shareUrl || (inviteCode ? ('https://owlry.ai/?ref=' + encodeURIComponent(inviteCode)) : personalShareUrl);
   if(already){
     t.textContent = 'already sealed.';
     s.textContent = pos
-      ? ('you\u2019re reader n\u00ba ' + pos + (inviteCode ? (' \u2014 invite ' + inviteCode) : '') + ' \u2014 the owls remember.')
+      ? ('you\u2019re reader n\u00ba ' + pos + ' \u2014 keep sharing your invite link to climb.')
       : 'the owls remember.';
   } else if(pos){
     s.textContent = 'you\u2019re reader n\u00ba ' + pos
-      + (inviteCode ? (' \u2014 invite ' + inviteCode) : '')
-      + ' \u2014 check your inbox for the welcome letter.';
+      + ' \u2014 check your inbox, then share your invite link to move up.';
   }
+  document.getElementById('shareX').href =
+    'https://twitter.com/intent/tweet?text=' +
+    encodeURIComponent('I just joined the Owlry waitlist \u2014 read better. \ud83e\udd89 Join via my link:') +
+    '&url=' + encodeURIComponent(personalShareUrl);
   postform.classList.remove('err');
   postform.classList.add('done');
 }
@@ -1086,15 +1094,16 @@ wl.addEventListener('submit', async e => {
   try{
     const meta = {
       source: 'landing',
-      ref: document.referrer || null,
+      http_referrer: document.referrer || null,
+      referral_code: inviteRef || null,
       utm: Object.fromEntries([...new URLSearchParams(location.search)].filter(([k]) => k.startsWith('utm_')))
     };
-    const res = await joinWaitlist(input.value, meta);
+    const res = await joinWaitlist(input.value, meta, inviteRef);
     if(res.full){
       showErr('the perch is full for now — 2000 founding seats are sealed. we\'ll open more soon.');
       return;
     }
-    seal(res.seat_number || res.position, res.already, res.invite_code);
+    seal(res.seat_number || res.position, res.already, res.invite_code, res.share_url);
   }catch(err){
     showErr('the owl couldn\'t take off — check the address and try again.');
   }finally{
@@ -1103,7 +1112,7 @@ wl.addEventListener('submit', async e => {
   }
 });
 
-/* share the letter */
+/* share the letter / invite link */
 const pageUrl = location.href.split('#')[0];
 document.getElementById('shareX').href =
   'https://twitter.com/intent/tweet?text=' +
@@ -1112,6 +1121,12 @@ document.getElementById('shareX').href =
 document.getElementById('shareCopy').addEventListener('click', async e => {
   try{
     await navigator.clipboard.writeText(pageUrl);
+    e.currentTarget.lastChild.textContent = ' copied';
+  }catch(_){}
+});
+document.getElementById('shareInvite').addEventListener('click', async e => {
+  try{
+    await navigator.clipboard.writeText(personalShareUrl);
     e.currentTarget.lastChild.textContent = ' copied';
   }catch(_){}
 });
