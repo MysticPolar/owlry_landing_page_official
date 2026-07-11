@@ -1007,11 +1007,11 @@ const io = new IntersectionObserver(es => es.forEach(e => {
 }), {threshold:.22});
 document.querySelectorAll('.cast-sec, .manifesto, .closing').forEach(s => io.observe(s));
 
-/* ============ waitlist — Supabase-wired, demo-safe ============ */
-/* WIRE: run supabase/waitlist.sql in your project's SQL editor, then paste
-   your project URL + anon key below. Left empty, the form runs in demo mode
-   (seals locally, stores nothing). */
-const OWLRY_WAITLIST = { url: '', anonKey: '' };
+/* ============ waitlist — Supabase edge function + welcome email ============ */
+const OWLRY_WAITLIST = {
+  url: 'https://twxzbpfchoctxyjeivvr.supabase.co',
+  anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR3eHpicGZjaG9jdHh5amVpdnZyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg0MDczNTIsImV4cCI6MjA5Mzk4MzM1Mn0.Q7SPjeJYTr5LNMSeyzTyU4GcLfK2QlQfIfqLMgZJ_DE'
+};
 
 const wl = document.getElementById('wl');
 const wlBtn = document.getElementById('wlBtn');
@@ -1028,11 +1028,26 @@ async function rpc(fn, body){
   return r.json();
 }
 
+async function joinWaitlist(email, meta){
+  const r = await fetch(OWLRY_WAITLIST.url + '/functions/v1/waitlist-join', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: OWLRY_WAITLIST.anonKey,
+      Authorization: 'Bearer ' + OWLRY_WAITLIST.anonKey
+    },
+    body: JSON.stringify({ email, meta })
+  });
+  const data = await r.json().catch(() => ({}));
+  if(!r.ok && !data.full) throw new Error(data.error || ('join ' + r.status));
+  return data;
+}
+
 /* live perch count (silent if unconfigured or offline) */
 if(configured){
   rpc('waitlist_count').then(n => {
     if(n > 0) document.getElementById('wlCount').textContent =
-      'Join ' + n + ' readers on the perch \u2014 the first letters ship soon.';
+      'Join ' + n + ' readers on the perch \u2014 ' + (2000 - n) + ' founding seats left.';
   }).catch(() => {});
 }
 
@@ -1042,15 +1057,22 @@ function seal(pos, already){
     t.textContent = 'already sealed.';
     s.textContent = pos ? 'you\u2019re reader n\u00ba ' + pos + ' \u2014 the owls remember.' : 'the owls remember.';
   } else if(pos){
-    s.textContent = 'you\u2019re reader n\u00ba ' + pos + ' \u2014 your first letter is on the owl.';
+    s.textContent = 'you\u2019re reader n\u00ba ' + pos + ' \u2014 check your inbox for the welcome letter.';
   }
   postform.classList.remove('err');
   postform.classList.add('done');
 }
 
+function showErr(msg){
+  document.getElementById('wlErr').textContent = msg;
+  postform.classList.remove('done');
+  postform.classList.add('err');
+}
+
 wl.addEventListener('submit', async e => {
   e.preventDefault();
   const input = document.getElementById('wlmail');
+  document.getElementById('wlErr').textContent = 'the owl couldn\'t take off — check the address and try again.';
   if(wl.nest && wl.nest.value){ seal(null, false); return; }        /* honeypot: bots get a quiet yes */
   if(!input.checkValidity()){ input.reportValidity(); return; }
   if(!configured){ seal(null, false); return; }                      /* demo mode */
@@ -1063,10 +1085,14 @@ wl.addEventListener('submit', async e => {
       ref: document.referrer || null,
       utm: Object.fromEntries([...new URLSearchParams(location.search)].filter(([k]) => k.startsWith('utm_')))
     };
-    const res = await rpc('join_waitlist', { p_email: input.value, p_meta: meta });
+    const res = await joinWaitlist(input.value, meta);
+    if(res.full){
+      showErr('the perch is full for now — 2000 founding seats are sealed. we\'ll open more soon.');
+      return;
+    }
     seal(res.position, res.already);
   }catch(err){
-    postform.classList.add('err');
+    showErr('the owl couldn\'t take off — check the address and try again.');
   }finally{
     wlBtn.disabled = false;
     wlBtn.firstChild.textContent = label;

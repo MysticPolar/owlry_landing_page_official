@@ -8,26 +8,23 @@ One folder, ready to deploy. The evening show is the default; the sun/moon in th
 - `favicon.png`, `apple-touch-icon.png` — generated from Scout
 - `supabase/waitlist.sql` — backend setup, one paste
 
-## 1 · Wire the waitlist (3 minutes)
-1. In your Supabase project, open the SQL editor, paste `supabase/waitlist.sql`, run it.
-2. In `index.html`, find `OWLRY_WAITLIST` in the script at the bottom and paste your project URL + anon key.
-3. Done. The form now inserts via a security-definer RPC (the anon key can only call
-   `join_waitlist` and `waitlist_count` — it cannot read or dump the table), returns each
-   reader's number ("you're reader nº 127"), treats duplicate emails as "already sealed",
-   shows a live "join N readers on the perch" line, and captures referrer + UTM params in `meta`.
+## 1 · Wire the waitlist (already applied on Supabase)
+The `join_waitlist` / `waitlist_count` RPCs and `waitlist-join` Edge Function are live
+(cap **2000**). The landing form is wired to project `twxzbpfchoctxyjeivvr`.
 
-Left unconfigured, the form runs in **demo mode**: it seals locally and stores nothing.
+**To turn on welcome emails**, follow [supabase/EMAIL_SETUP.md](supabase/EMAIL_SETUP.md)
+(Resend API key + verify `owlry.ai` as a sending domain).
 
 ## 2 · Deploy
-Drag the folder into Netlify / Vercel / Cloudflare Pages. No build step.
+Drag the folder into Netlify / Vercel / Cloudflare Pages, or push to GitHub Pages. No build step.
 
 ## 3 · Pre-flight checklist
-- [ ] Set the canonical URL and make `og:image` / `twitter:image` **absolute** (TODOs marked in `<head>`)
-- [ ] Replace `hello@owlry.app` in the footer with your real contact address
+- [ ] Confirm `https://owlry.ai` is serving this landing (not GoDaddy Website Builder)
+- [ ] Add Resend secrets so welcome emails actually send ([EMAIL_SETUP.md](supabase/EMAIL_SETUP.md))
 - [ ] Confirm the two social links (X / TikTok → @thelostchapter8)
 - [ ] Optional: drop your analytics snippet just before `</body>` (Plausible/Fathom fit the no-tracking microcopy best)
 - [ ] Spam: a honeypot field ships in the form; if pressure grows, enable Supabase's
-      built-in API rate limits or add Turnstile in front of the RPC call.
+    built-in API rate limits or add Turnstile in front of the join call.
 
 ## Notes
 - The daily-letter card, quote card, radar, and owls are the app's actual components — app and site share one design system.
