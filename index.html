@@ -1006,7 +1006,7 @@ document.getElementById('yr').textContent = new Date().getFullYear();
 const io = new IntersectionObserver(es => es.forEach(e => {
   if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); }
 }), {threshold:.22});
-document.querySelectorAll('.cast-sec, .manifesto, .closing').forEach(s => io.observe(s));
+document.querySelectorAll('.cast-sec, .manifesto, .faq, .closing').forEach(s => io.observe(s));
 
 /* ============ waitlist — Supabase edge function + welcome email ============ */
 const OWLRY_WAITLIST = {
